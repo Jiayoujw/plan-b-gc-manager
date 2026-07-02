@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Plan-B API",
+    "title": "Teyvat Manager API",
     "version": "0.2.0",
     "description": "Grasscutter Web Management Platform"
   },

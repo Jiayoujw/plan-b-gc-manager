@@ -1,4 +1,4 @@
-# Plan-B 提瓦特管理台
+# Teyvat Manager
 
 > 基于 Grasscutter 的原神私服综合 Web 管理平台  
 > 版本 v0.2.0 | 2026-07
@@ -22,7 +22,7 @@
 
 ## 1. 项目简介
 
-Plan-B 是一个为 Grasscutter（原神私服）提供完整管理功能的 Web 平台。包含：
+Teyvat Manager 是一个为 Grasscutter（原神私服）提供完整管理功能的 Web 平台。包含：
 
 - 🔒 **HTTPS 代理** — 拦截游戏流量并转发至 Grasscutter
 - 🖥️ **Web 管理后台** — 浏览器远程管理，支持手机/平板
@@ -32,7 +32,7 @@ Plan-B 是一个为 Grasscutter（原神私服）提供完整管理功能的 Web
 
 ### 与同类项目对比
 
-| 功能 | Cultivation | KCN | **Plan-B** |
+| 功能 | Cultivation | KCN | **Teyvat Manager** |
 |------|:--:|:--:|:--:|
 | 一键部署 | ✅ | ❌ | ✅ |
 | Web 远程管理 | ❌ | ❌ | ✅ |
@@ -119,7 +119,7 @@ mkdir C:\data\db
 
 ```bash
 # 克隆或解压项目到本地
-cd plan-b-dev
+cd teyvat-manager
 
 # 安装依赖
 npm install
@@ -178,7 +178,7 @@ pm2 startup
 ## 4. 目录结构
 
 ```
-plan-b-dev/
+teyvat-manager/
 ├── server.js                   # 主服务入口 (Express)
 ├── ecosystem.config.js         # PM2 配置
 ├── Dockerfile                  # Docker 镜像
@@ -459,7 +459,35 @@ plan-b-dev/
 
 ---
 
-## 8. Docker 部署
+## 8. 打包桌面应用 (.exe)
+
+### 8.1 构建命令
+
+```bash
+cd electron
+npm install
+npm run build              # 便携版 .exe
+npm run build:installer    # NSIS 安装程序
+```
+
+产物在 `electron/dist/` 目录。
+
+### 8.2 上传到 GitHub Release
+
+```bash
+gh release upload v0.2.0 electron/dist/*.exe
+```
+
+### 8.3 手动发布
+
+1. 打开 https://github.com/Jiayoujw/teyvat-manager/releases
+2. 编辑 v0.2.0 Release
+3. 拖入 `electron/dist/*.exe` 文件
+4. 点击 "Update release"
+
+---
+
+## 9. Docker 部署
 
 ### 8.1 构建镜像
 

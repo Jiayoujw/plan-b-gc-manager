@@ -1,4 +1,4 @@
-# Plan-B 提瓦特管理台 — Docker Compose 一键部署
+# Teyvat Manager — Docker Compose 一键部署
 # Phase 1: 基础框架
 
 version: '3.8'

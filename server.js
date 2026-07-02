@@ -1002,7 +1002,7 @@ setInterval(async () => {
 // ===== P3-4: 版本兼容性面板 =====
 app.get('/api/version', (req, res) => {
   const info = {
-    server: 'Plan-B 提瓦特管理台',
+    server: 'Teyvat Manager',
     version: '0.2.0',
     node: process.version,
     platform: process.platform,
@@ -1112,12 +1112,12 @@ try {
   const bonjour = require('bonjour');
   const mdns = bonjour();
   mdns.publish({
-    name: 'Plan-B 提瓦特管理台',
+    name: 'Teyvat Manager',
     type: 'http',
     port: PORT,
     txt: { path: '/', desc: 'Grasscutter Management Console' },
   });
-  console.log('[mDNS] 局域网服务已广播: Plan-B 提瓦特管理台');
+  console.log('[mDNS] 局域网服务已广播: Teyvat Manager');
 } catch (e) {
   console.log('[mDNS] Bonjour 广播跳过:', e.message);
 }

@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 
-class PlanBLauncher
+class TeyvatLauncher
 {
     static Process serverProcess;
     static void Main(string[] args)
@@ -21,7 +21,7 @@ class PlanBLauncher
         }
 
         Console.WriteLine("========================================");
-        Console.WriteLine("  Plan-B 提瓦特管理台 v0.2.0");
+        Console.WriteLine("  Teyvat Manager v0.2.0");
         Console.WriteLine("  Grasscutter Private Server Manager");
         Console.WriteLine("========================================");
         Console.WriteLine();

@@ -2,7 +2,7 @@ const fs = require('fs');
 
 const spec = {
   openapi: '3.0.3',
-  info: { title: 'Plan-B API', version: '0.2.0', description: 'Grasscutter Web Management Platform' },
+  info: { title: 'Teyvat Manager API', version: '0.2.0', description: 'Grasscutter Web Management Platform' },
   servers: [{ url: 'http://localhost:8080', description: 'Local' }],
   tags: [
     { name: 'Auth' }, { name: 'Server' }, { name: 'Proxy' }, { name: 'Players' },

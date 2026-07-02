@@ -1,4 +1,4 @@
-// Plan-B 桌面应用 - Electron 主进程
+// Teyvat Manager 桌面应用 - Electron 主进程
 const { app, BrowserWindow, Tray, Menu, nativeImage, dialog } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
@@ -67,7 +67,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    title: 'Plan-B 提瓦特管理台',
+    title: 'Teyvat Manager',
     icon: path.join(SERVER_DIR, 'public', 'favicon.ico'),
     webPreferences: {
       nodeIntegration: false,
@@ -101,7 +101,7 @@ function createTray() {
     { type: 'separator' },
     { label: '启动 MongoDB + Grasscutter', click: () => {
       http.get('http://localhost:8080/api/server/start-all', (res) => {
-        dialog.showMessageBox({ type: 'info', title: 'Plan-B', message: '服务启动指令已发送' });
+        dialog.showMessageBox({ type: 'info', title: 'Teyvat Manager', message: '服务启动指令已发送' });
       }).on('error', () => {
         dialog.showErrorBox('错误', '后端服务未就绪');
       });
@@ -117,7 +117,7 @@ function createTray() {
     { label: '退出', click: () => { isQuitting = true; app.quit(); } },
   ]);
 
-  tray.setToolTip('Plan-B 提瓦特管理台');
+  tray.setToolTip('Teyvat Manager');
   tray.setContextMenu(contextMenu);
   tray.on('double-click', () => {
     if (mainWindow) mainWindow.show();

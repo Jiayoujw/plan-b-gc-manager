@@ -1,7 +1,7 @@
 {
-  "name": "plan-b-desktop",
+  "name": "teyvat-manager-desktop",
   "version": "0.2.0",
-  "description": "Plan-B 提瓦特管理台 - 桌面应用",
+  "description": "Teyvat Manager - 桌面应用",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -9,8 +9,8 @@
     "build:installer": "electron-builder --win nsis"
   },
   "build": {
-    "appId": "com.planb.teyvat-manager",
-    "productName": "Plan-B 提瓦特管理台",
+    "appId": "com.teyvat.manager",
+    "productName": "Teyvat Manager",
     "directories": {
       "output": "dist"
     },
@@ -26,17 +26,23 @@
       "../node_modules/**/*"
     ],
     "extraResources": [
-      { "from": "../.proxy-ssl", "to": ".proxy-ssl" }
+      {
+        "from": "../.proxy-ssl",
+        "to": ".proxy-ssl"
+      }
     ],
     "win": {
-      "target": ["portable", "nsis"],
+      "target": [
+        "portable",
+        "nsis"
+      ],
       "icon": "../public/favicon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "Plan-B 提瓦特管理台"
+      "shortcutName": "Teyvat Manager"
     }
   },
   "devDependencies": {
