@@ -1,0 +1,1365 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Plan-B API",
+    "version": "0.2.0",
+    "description": "Grasscutter Web Management Platform"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Server"
+    },
+    {
+      "name": "Proxy"
+    },
+    {
+      "name": "Players"
+    },
+    {
+      "name": "Gacha"
+    },
+    {
+      "name": "Items"
+    },
+    {
+      "name": "Multiplayer"
+    },
+    {
+      "name": "Quests"
+    },
+    {
+      "name": "Security"
+    },
+    {
+      "name": "Database"
+    },
+    {
+      "name": "System"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "LoginReq": {
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "GMCommand": {
+        "type": "object",
+        "required": [
+          "command"
+        ],
+        "properties": {
+          "command": {
+            "type": "string",
+            "example": "give @10001 201 500"
+          }
+        }
+      },
+      "GiveItem": {
+        "type": "object",
+        "required": [
+          "itemId"
+        ],
+        "properties": {
+          "itemId": {
+            "type": "integer"
+          },
+          "amount": {
+            "type": "integer",
+            "default": 1
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JWT token"
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Register",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Current user + permissions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User info"
+          }
+        }
+      }
+    },
+    "/api/server/start-all": {
+      "post": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Start MongoDB + Grasscutter",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Start results"
+          }
+        }
+      }
+    },
+    "/api/server/stop-all": {
+      "post": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Stop all services",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stop results"
+          }
+        }
+      }
+    },
+    "/api/server/start": {
+      "post": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Start Grasscutter",
+        "responses": {
+          "200": {
+            "description": "PID"
+          }
+        }
+      }
+    },
+    "/api/server/stop": {
+      "post": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Stop Grasscutter",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/server/command": {
+      "post": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Send GM command",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GMCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result"
+          }
+        }
+      }
+    },
+    "/api/server/broadcast": {
+      "post": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Broadcast to all players",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/status": {
+      "get": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Service status",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status object"
+          }
+        }
+      }
+    },
+    "/api/proxy/status": {
+      "get": {
+        "tags": [
+          "Proxy"
+        ],
+        "summary": "Proxy status",
+        "responses": {
+          "200": {
+            "description": "running + port"
+          }
+        }
+      }
+    },
+    "/api/proxy/start": {
+      "post": {
+        "tags": [
+          "Proxy"
+        ],
+        "summary": "Start proxy",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/proxy/stop": {
+      "post": {
+        "tags": [
+          "Proxy"
+        ],
+        "summary": "Stop proxy",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/proxy/cert": {
+      "get": {
+        "tags": [
+          "Proxy"
+        ],
+        "summary": "Certificate status + expiry",
+        "responses": {
+          "200": {
+            "description": "installed + daysLeft"
+          }
+        }
+      }
+    },
+    "/api/proxy/cert/install": {
+      "post": {
+        "tags": [
+          "Proxy"
+        ],
+        "summary": "Install CA cert",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/proxy/stats": {
+      "get": {
+        "tags": [
+          "Proxy"
+        ],
+        "summary": "Proxy statistics",
+        "responses": {
+          "200": {
+            "description": "interceptCount + errorCount"
+          }
+        }
+      }
+    },
+    "/api/players": {
+      "get": {
+        "tags": [
+          "Players"
+        ],
+        "summary": "Player list",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player array"
+          }
+        }
+      }
+    },
+    "/api/players/{uid}": {
+      "get": {
+        "tags": [
+          "Players"
+        ],
+        "summary": "Player detail",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full player data"
+          }
+        }
+      }
+    },
+    "/api/players/{uid}/give": {
+      "post": {
+        "tags": [
+          "Players"
+        ],
+        "summary": "Give items via GM",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GiveItem"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result"
+          }
+        }
+      }
+    },
+    "/api/players/{uid}/ban": {
+      "post": {
+        "tags": [
+          "Players"
+        ],
+        "summary": "Ban player",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/players/{uid}/unban": {
+      "post": {
+        "tags": [
+          "Players"
+        ],
+        "summary": "Unban player",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/players/{uid}/kick": {
+      "post": {
+        "tags": [
+          "Players"
+        ],
+        "summary": "Kick player",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/players/{uid}/teleport": {
+      "post": {
+        "tags": [
+          "Players"
+        ],
+        "summary": "Teleport player",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/players/{uid}/setlevel": {
+      "post": {
+        "tags": [
+          "Players"
+        ],
+        "summary": "Set adventure rank",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/players/{uid}/setworldlevel": {
+      "post": {
+        "tags": [
+          "Players"
+        ],
+        "summary": "Set world level",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/gacha": {
+      "get": {
+        "tags": [
+          "Gacha"
+        ],
+        "summary": "All banners",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Banner array"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Gacha"
+        ],
+        "summary": "Save banners",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/gacha/versions": {
+      "get": {
+        "tags": [
+          "Gacha"
+        ],
+        "summary": "Version snapshots",
+        "responses": {
+          "200": {
+            "description": "Version list"
+          }
+        }
+      }
+    },
+    "/api/gacha/versions/apply": {
+      "post": {
+        "tags": [
+          "Gacha"
+        ],
+        "summary": "Apply version",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/gacha/items/search": {
+      "get": {
+        "tags": [
+          "Gacha"
+        ],
+        "summary": "Search gacha items (mappings.js)",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rarity",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Items"
+          }
+        }
+      }
+    },
+    "/api/gacha/history/{uid}": {
+      "get": {
+        "tags": [
+          "Gacha"
+        ],
+        "summary": "Pull history + pity stats",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "History + stats"
+          }
+        }
+      }
+    },
+    "/api/items": {
+      "get": {
+        "tags": [
+          "Items"
+        ],
+        "summary": "Item search (20,446 items)",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Items + categories"
+          }
+        }
+      }
+    },
+    "/api/multiplayer/players": {
+      "get": {
+        "tags": [
+          "Multiplayer"
+        ],
+        "summary": "Player locations",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Players + positions"
+          }
+        }
+      }
+    },
+    "/api/multiplayer/stats": {
+      "get": {
+        "tags": [
+          "Multiplayer"
+        ],
+        "summary": "Multiplayer stats",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Online/rooms/total"
+          }
+        }
+      }
+    },
+    "/api/multiplayer/rooms": {
+      "get": {
+        "tags": [
+          "Multiplayer"
+        ],
+        "summary": "Co-op rooms",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Room list"
+          }
+        }
+      }
+    },
+    "/api/multiplayer/kick": {
+      "post": {
+        "tags": [
+          "Multiplayer"
+        ],
+        "summary": "Kick from world",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/multiplayer/invite": {
+      "post": {
+        "tags": [
+          "Multiplayer"
+        ],
+        "summary": "Invite to world",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/multiplayer/chat": {
+      "get": {
+        "tags": [
+          "Multiplayer"
+        ],
+        "summary": "Chat history",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Multiplayer"
+        ],
+        "summary": "Send chat",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/multiplayer/kcp-status": {
+      "get": {
+        "tags": [
+          "Multiplayer"
+        ],
+        "summary": "KCP port + config",
+        "responses": {
+          "200": {
+            "description": "KCP info"
+          }
+        }
+      }
+    },
+    "/api/multiplayer/diagnostic": {
+      "get": {
+        "tags": [
+          "Multiplayer"
+        ],
+        "summary": "Network diagnostic",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Diagnostic report"
+          }
+        }
+      }
+    },
+    "/api/quests": {
+      "get": {
+        "tags": [
+          "Quests"
+        ],
+        "summary": "Script list + stats",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scripts"
+          }
+        }
+      }
+    },
+    "/api/quests/init-samples": {
+      "post": {
+        "tags": [
+          "Quests"
+        ],
+        "summary": "Initialize sample scripts",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Created count"
+          }
+        }
+      }
+    },
+    "/api/quests/reload": {
+      "post": {
+        "tags": [
+          "Quests"
+        ],
+        "summary": "Hot reload all scripts",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/anomaly/alerts": {
+      "get": {
+        "tags": [
+          "Security"
+        ],
+        "summary": "Anomaly alerts",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Alerts + stats"
+          }
+        }
+      }
+    },
+    "/api/anomaly/rules": {
+      "get": {
+        "tags": [
+          "Security"
+        ],
+        "summary": "Detection rules",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "6 rules"
+          }
+        }
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "tags": [
+          "Security"
+        ],
+        "summary": "Audit log",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Records"
+          }
+        }
+      }
+    },
+    "/api/database/collections": {
+      "get": {
+        "tags": [
+          "Database"
+        ],
+        "summary": "MongoDB collections",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection list"
+          }
+        }
+      }
+    },
+    "/api/database/query": {
+      "post": {
+        "tags": [
+          "Database"
+        ],
+        "summary": "Execute read-only query",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Query results"
+          }
+        }
+      }
+    },
+    "/api/database/stats": {
+      "get": {
+        "tags": [
+          "Database"
+        ],
+        "summary": "DB stats",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Size/collections/docs"
+          }
+        }
+      }
+    },
+    "/api/teleport/presets": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "14 teleport presets",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Presets"
+          }
+        }
+      }
+    },
+    "/api/teleport/player": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Teleport player to preset",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/backups": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Backup list",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backup files"
+          }
+        }
+      }
+    },
+    "/api/backups/create": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Create backup",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/macros": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Macro list",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Macros"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Create macro",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/macros/{name}/execute": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Execute macro",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Results"
+          }
+        }
+      }
+    },
+    "/api/system/info": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "System info (CPU/Mem/Node)",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "System info"
+          }
+        }
+      }
+    },
+    "/api/version": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Version compatibility matrix",
+        "responses": {
+          "200": {
+            "description": "Version info"
+          }
+        }
+      }
+    },
+    "/api/commands/templates": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "GM command templates (13)",
+        "responses": {
+          "200": {
+            "description": "Templates"
+          }
+        }
+      }
+    },
+    "/api/perf": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Performance history",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CPU/Mem/Online trend"
+          }
+        }
+      }
+    },
+    "/api/plugins": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Installed plugins",
+        "responses": {
+          "200": {
+            "description": "Plugin list"
+          }
+        }
+      }
+    },
+    "/api/activities": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Activity config",
+        "responses": {
+          "200": {
+            "description": "Activities"
+          }
+        }
+      }
+    },
+    "/api/config": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Read config.json",
+        "responses": {
+          "200": {
+            "description": "Config"
+          }
+        }
+      }
+    },
+    "/api/logs/system": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "System logs",
+        "responses": {
+          "200": {
+            "description": "Log lines"
+          }
+        }
+      }
+    },
+    "/api/game/launch": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Launch game client",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/game/path": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Saved game path",
+        "responses": {
+          "200": {
+            "description": "Path"
+          }
+        }
+      }
+    },
+    "/api/game-data": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Game data files",
+        "responses": {
+          "200": {
+            "description": "File list"
+          }
+        }
+      }
+    }
+  }
+}

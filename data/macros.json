@@ -1,0 +1,13 @@
+[
+  {
+    "name": "新手礼包",
+    "commands": [
+      "/give 201 x1000",
+      "/give 223 x50000",
+      "/give 101 x10"
+    ],
+    "description": "新手初始资源",
+    "createdBy": "admin",
+    "createdAt": "2026-07-02T01:46:32.198Z"
+  }
+]

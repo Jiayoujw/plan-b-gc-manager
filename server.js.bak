@@ -1,0 +1,600 @@
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
+const { spawn } = require('child_process');
+const configRoutes = require('./routes/config');
+const playerRoutes = require('./routes/players');
+const gachaRoutes = require('./routes/gacha');
+const logRoutes = require('./routes/logs');
+const gcService = require('./services/grasscutter');
+const launcher = require('./services/launcher');
+const proxyService = require('./services/proxy');
+const authService = require('./services/auth');
+const auditService = require('./services/audit');
+const gachaVersions = require('./services/gachaVersions');
+const perfmon = require('./services/perfmon');
+
+const GC_DIR = path.join(process.env.USERPROFILE, 'AppData', 'Roaming', 'cultivation', 'grasscutter');
+
+const app = express();
+const PORT = 8080;
+
+app.use(cors());
+app.use(express.json());
+
+// 认证 API（公开）
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ success: false, message: '请输入用户名和密码' });
+  }
+  const result = authService.login(username, password);
+  res.status(result.success ? 200 : 401).json(result);
+});
+
+app.post('/api/auth/register', (req, res) => {
+  const { username, password, role } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ success: false, message: '请输入用户名和密码' });
+  }
+  const result = authService.register(username, password, role);
+  res.status(result.success ? 200 : 400).json(result);
+});
+
+// 静态文件（登录页面不需要认证）
+app.use(express.static(path.join(__dirname, 'public')));
+
+// API 路由
+app.use('/api/config', configRoutes);
+app.use('/api/players', authService.middleware, playerRoutes);
+app.use('/api/gacha', authService.middleware, gachaRoutes);
+app.use('/api/logs', logRoutes);
+
+// 启动服务端（仅 Grasscutter，保留旧 API 兼容）
+app.post('/api/server/start', async (req, res) => {
+  try {
+    const result = await gcService.start();
+    res.json({ success: true, message: '服务端已启动', pid: result.pid });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 停止服务端（仅 Grasscutter，保留旧 API 兼容）
+app.post('/api/server/stop', async (req, res) => {
+  try {
+    await gcService.stop();
+    res.json({ success: true, message: '服务端已停止' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 一键启动所有服务（MongoDB + Grasscutter）
+app.post('/api/server/start-all', async (req, res) => {
+  try {
+    const result = await launcher.startAll();
+    res.json({ success: result.success, message: '一键启动完成', details: result.results });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 一键停止所有服务
+app.post('/api/server/stop-all', async (req, res) => {
+  try {
+    const result = await launcher.stopAll();
+    res.json({ success: true, message: '一键停止完成', details: result.results });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 代理状态
+app.get('/api/proxy/status', async (req, res) => {
+  const running = await proxyService.checkProxy();
+  res.json({
+    running,
+    port: proxyService.getProxyPort()
+  });
+});
+
+// 启动代理
+app.post('/api/proxy/start', async (req, res) => {
+  try {
+    const result = await proxyService.startProxy();
+    res.json({ success: true, message: result.message });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 停止代理
+app.post('/api/proxy/stop', async (req, res) => {
+  try {
+    const result = await proxyService.stopProxy();
+    res.json({ success: true, message: result.message });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 证书状态
+app.get('/api/proxy/cert', async (req, res) => {
+  try {
+    const installed = await proxyService.isCaInstalled();
+    res.json({ success: true, installed, path: proxyService.getCaCertPath() });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 安装证书
+app.post('/api/proxy/cert/install', async (req, res) => {
+  try {
+    await proxyService.installCaCert();
+    res.json({ success: true, message: 'CA 证书已安装到系统信任存储' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 扫描目录查找游戏 exe
+app.get('/api/game/browse', (req, res) => {
+  const dir = (req.query.dir || '').trim();
+  if (!dir) {
+    // 返回常见游戏安装目录列表
+    const drives = ['C', 'D', 'E', 'F'].filter(d => fs.existsSync(d + ':\\'));
+    const commonDirs = [];
+
+    // 加入 Cultivation 配置中的路径
+    const cultivationCfg = path.join(process.env.USERPROFILE || '', 'AppData', 'Roaming', 'cultivation', 'configuration.json');
+    try {
+      if (fs.existsSync(cultivationCfg)) {
+        const cfg = JSON.parse(fs.readFileSync(cultivationCfg, 'utf-8'));
+        const cultPath = cfg.game_install_path || cfg.gameInstallPath || null;
+        if (cultPath) {
+          const dirPath = path.dirname(cultPath);
+          if (fs.existsSync(dirPath)) {
+            commonDirs.push({ path: dirPath, exists: true, label: 'Cultivation 配置' });
+          }
+        }
+      }
+    } catch {}
+
+    for (const d of drives) {
+      const candidates = [
+        d + ':\\GenshinImpact',
+        d + ':\\GenshinImpact_4.0',
+        d + ':\\Program Files\\Genshin Impact',
+        d + ':\\Games\\Genshin Impact',
+        d + ':\\miHoYo\\Genshin Impact',
+        d + ':\\HoyoPlay\\Genshin Impact'
+      ];
+      for (const c of candidates) {
+        if (fs.existsSync(c)) {
+          commonDirs.push({ path: c, exists: true });
+        }
+      }
+      // 也列出该盘根目录下的文件夹（最多20个，排除系统目录）
+      try {
+        const skipDirs = ['$Recycle.Bin', '$WinREAgent', '$RECYCLE.BIN', 'PerfLogs', 'Recovery',
+          'System Volume Information', 'Config.Msi', 'DeliveryOptimization', 'ProgramData',
+          'Program Files', 'Program Files (x86)', 'Windows', 'Users', 'inetpub', 'tmp', 'persistent_data'];
+        const items = fs.readdirSync(d + ':\\', { withFileTypes: true })
+          .filter(f => f.isDirectory() && !skipDirs.includes(f.name) && !f.name.startsWith('.') && !f.name.startsWith('$'))
+          .slice(0, 20)
+          .map(f => ({ path: d + ':\\' + f.name, exists: true }));
+        commonDirs.push(...items);
+      } catch {}
+    }
+    return res.json({ success: true, type: 'drives', drives, commonDirs });
+  }
+
+  // 浏览指定目录
+  if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
+    return res.json({ success: false, message: '目录不存在' });
+  }
+  try {
+    const items = fs.readdirSync(dir, { withFileTypes: true })
+      .filter(f => {
+        if (f.name.startsWith('.') || f.name.startsWith('$')) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        // 目录在前
+        if (a.isDirectory() && !b.isDirectory()) return -1;
+        if (!a.isDirectory() && b.isDirectory()) return 1;
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, 50)
+      .map(f => ({
+        name: f.name,
+        path: path.join(dir, f.name),
+        isDir: f.isDirectory(),
+        isExe: f.name.endsWith('.exe')
+      }));
+
+    res.json({ success: true, type: 'listing', currentDir: dir, items });
+  } catch (err) {
+    res.json({ success: false, message: err.message });
+  }
+});
+
+// 检测游戏客户端路径（从配置文件读取已保存的路径）
+const SETTINGS_FILE = path.join(__dirname, 'data', 'settings.json');
+
+function loadSettings() {
+  try {
+    if (fs.existsSync(SETTINGS_FILE)) {
+      return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
+    }
+  } catch {}
+  return {};
+}
+
+function saveSettings(settings) {
+  const dir = path.dirname(SETTINGS_FILE);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
+}
+
+app.get('/api/game/path', (req, res) => {
+  // 1. 先读取本服务保存的设置
+  const settings = loadSettings();
+  const saved = settings.gamePath || null;
+  if (saved && fs.existsSync(saved)) {
+    return res.json({ success: true, path: saved, exists: true, source: 'saved' });
+  }
+
+  // 2. 再读取 Cultivation 配置中的路径
+  const cultivationCfg = path.join(process.env.USERPROFILE || '', 'AppData', 'Roaming', 'cultivation', 'configuration.json');
+  try {
+    if (fs.existsSync(cultivationCfg)) {
+      const cfg = JSON.parse(fs.readFileSync(cultivationCfg, 'utf-8'));
+      const cultPath = cfg.game_install_path || cfg.gameInstallPath || null;
+      if (cultPath && fs.existsSync(cultPath)) {
+        return res.json({ success: true, path: cultPath, exists: true, source: 'cultivation' });
+      }
+    }
+  } catch {}
+
+  res.json({ success: true, path: null, exists: false, source: 'none' });
+});
+
+// 验证游戏路径（支持输入目录自动查找 exe）
+app.post('/api/game/verify', (req, res) => {
+  const input = (req.body.path || '').trim();
+  if (!input) {
+    return res.json({ success: false, message: '请输入路径' });
+  }
+
+  // 如果直接是 exe 文件
+  if (input.endsWith('.exe') && fs.existsSync(input)) {
+    // 验证是否为原神客户端（文件大小 > 20MB）
+    const stat = fs.statSync(input);
+    if (stat.size < 20 * 1024 * 1024) {
+      return res.json({ success: false, message: '文件过小（' + (stat.size/1024/1024).toFixed(1) + ' MB），不是原神客户端' });
+    }
+    return res.json({ success: true, path: input, message: '找到游戏客户端（' + (stat.size/1024/1024).toFixed(0) + ' MB）' });
+  }
+
+  // 如果是目录，自动查找 exe
+  if (fs.existsSync(input) && fs.statSync(input).isDirectory()) {
+    const exes = ['GenshinImpact.exe', 'YuanShen.exe'];
+    // 先检查根目录
+    for (const exe of exes) {
+      const p = path.join(input, exe);
+      if (fs.existsSync(p)) {
+        return res.json({ success: true, path: p, message: '找到: ' + p });
+      }
+    }
+    // 再检查子目录 "Genshin Impact Game"
+    for (const exe of exes) {
+      const p = path.join(input, 'Genshin Impact Game', exe);
+      if (fs.existsSync(p)) {
+        return res.json({ success: true, path: p, message: '找到: ' + p });
+      }
+    }
+    return res.json({ success: false, message: '目录中未找到 GenshinImpact.exe 或 YuanShen.exe' });
+  }
+
+  res.json({ success: false, message: '路径不存在: ' + input });
+});
+
+// 启动游戏客户端
+app.post('/api/game/launch', (req, res) => {
+  const gamePath = req.body.path;
+  if (!gamePath) {
+    return res.status(400).json({ success: false, message: '请先设置游戏客户端路径' });
+  }
+  if (!fs.existsSync(gamePath)) {
+    return res.status(404).json({ success: false, message: '未找到游戏客户端: ' + gamePath });
+  }
+  try {
+    // Windows 上启动 GUI 程序需要用 cmd /c start
+    spawn('cmd', ['/c', 'start', '', gamePath], { windowsHide: false, detached: true });
+    res.json({ success: true, message: '游戏客户端已启动' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 保存游戏路径设置
+app.post('/api/game/path', (req, res) => {
+  const gamePath = (req.body.path || '').trim();
+  if (!gamePath) {
+    return res.json({ success: false, message: '路径为空' });
+  }
+  const settings = loadSettings();
+  settings.gamePath = gamePath;
+  saveSettings(settings);
+  res.json({ success: true, message: '路径已保存' });
+});
+
+// GM 指令发送
+app.post('/api/server/command', authService.middleware, (req, res) => {
+  const cmd = (req.body.command || '').trim();
+  if (!cmd) {
+    return res.status(400).json({ success: false, message: '指令为空' });
+  }
+  const result = gcService.sendCommand(cmd);
+  auditService.logAction(req.user.username, req.user.role, 'GM指令', '', cmd, req.ip);
+  res.json(result);
+});
+
+// 获取已安装插件列表
+app.get('/api/plugins', (req, res) => {
+  const pluginsDir = path.join(GC_DIR, 'plugins');
+  if (!fs.existsSync(pluginsDir)) {
+    return res.json({ success: true, plugins: [] });
+  }
+  try {
+    const items = fs.readdirSync(pluginsDir, { withFileTypes: true });
+    const plugins = items
+      .filter(f => f.isDirectory() || f.name.endsWith('.jar'))
+      .map(f => {
+        const pluginPath = path.join(pluginsDir, f.name);
+        const isDir = f.isDirectory();
+        const configPath = isDir ? path.join(pluginPath, 'config.json') : null;
+        const hasConfig = configPath && fs.existsSync(configPath);
+        return {
+          name: f.name,
+          path: pluginPath,
+          isDir: isDir,
+          hasConfig: hasConfig,
+          size: isDir ? null : fs.statSync(pluginPath).size
+        };
+      });
+    res.json({ success: true, plugins });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 切换插件启用/禁用（通过重命名 .jar 为 .jar.disabled）
+app.post('/api/plugins/toggle', (req, res) => {
+  const pluginName = req.body.name;
+  if (!pluginName) {
+    return res.status(400).json({ success: false, message: '插件名为空' });
+  }
+  const pluginsDir = path.join(GC_DIR, 'plugins');
+  const jarPath = path.join(pluginsDir, pluginName);
+  const disabledPath = path.join(pluginsDir, pluginName + '.disabled');
+
+  try {
+    if (fs.existsSync(jarPath)) {
+      fs.renameSync(jarPath, disabledPath);
+      return res.json({ success: true, message: '插件已禁用', enabled: false });
+    } else if (fs.existsSync(disabledPath)) {
+      fs.renameSync(disabledPath, jarPath);
+      return res.json({ success: true, message: '插件已启用', enabled: true });
+    } else {
+      return res.status(404).json({ success: false, message: '插件不存在' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 物品 ID 查询
+app.get('/api/items', (req, res) => {
+  const itemsFile = path.join(__dirname, 'data', 'items.json');
+  try {
+    const data = JSON.parse(fs.readFileSync(itemsFile, 'utf-8'));
+    const q = (req.query.q || '').toLowerCase();
+    const cat = req.query.category;
+    let items = data.items;
+    if (cat) items = items.filter(i => i.category === cat);
+    if (q) items = items.filter(i => i.name.toLowerCase().includes(q) || String(i.id).includes(q));
+    res.json({ success: true, categories: data.categories, items, total: items.length });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 当前用户权限
+app.get('/api/auth/me', authService.middleware, (req, res) => {
+  res.json({ success: true, user: req.user, permissions: authService.getPermissions(req.user.role) });
+});
+
+// 审计日志查询
+app.get('/api/audit', authService.middleware, (req, res) => {
+  const limit = parseInt(req.query.limit) || 100;
+  res.json({ success: true, records: auditService.getRecords(limit) });
+});
+
+// 卡池版本库
+app.get('/api/gacha/versions', (req, res) => {
+  const result = gachaVersions.listVersions();
+  const current = gachaVersions.getCurrentVersion();
+  res.json({ ...result, current });
+});
+
+app.post('/api/gacha/versions/apply', authService.middleware, (req, res) => {
+  const { version } = req.body;
+  if (!version) return res.status(400).json({ success: false, message: '版本名为空' });
+  const result = gachaVersions.applyVersion(version);
+  if (result.success) {
+    auditService.logAction(req.user.username, req.user.role, '切换卡池', version, '', req.ip);
+  }
+  res.json(result);
+});
+
+// 代理统计信息
+app.get('/api/proxy/stats', (req, res) => {
+  res.json({ success: true, stats: proxyService.getStats() });
+});
+
+// ===== Activity System =====
+const DATA_DIR = path.join(GC_DIR, 'data');
+
+function readJsonFile(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    }
+  } catch {}
+  return null;
+}
+
+function writeJsonFile(filePath, data) {
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+// 活动配置
+app.get('/api/activities', (req, res) => {
+  const data = readJsonFile(path.join(DATA_DIR, 'ActivityConfig.json'));
+  res.json({ success: true, activities: data || [] });
+});
+
+app.post('/api/activities', authService.middleware, (req, res) => {
+  try {
+    writeJsonFile(path.join(DATA_DIR, 'ActivityConfig.json'), req.body.activities || []);
+    res.json({ success: true, message: '活动配置已保存' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 公告
+app.get('/api/announcements', (req, res) => {
+  const data = readJsonFile(path.join(DATA_DIR, 'Announcement.json'));
+  res.json({ success: true, announcements: data || [] });
+});
+
+app.post('/api/announcements', authService.middleware, (req, res) => {
+  try {
+    writeJsonFile(path.join(DATA_DIR, 'Announcement.json'), req.body.announcements || []);
+    res.json({ success: true, message: '公告已保存' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 游戏公告
+app.get('/api/game-announcements', (req, res) => {
+  const data = readJsonFile(path.join(DATA_DIR, 'GameAnnouncement.json'));
+  res.json({ success: true, data: data || { t: '{{SYSTEM_TIME}}', list: [], total: 0 } });
+});
+
+app.post('/api/game-announcements', authService.middleware, (req, res) => {
+  try {
+    writeJsonFile(path.join(DATA_DIR, 'GameAnnouncement.json'), req.body.data || { t: '{{SYSTEM_TIME}}', list: [], total: 0 });
+    res.json({ success: true, message: '游戏公告已保存' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 受保护的状态检查（需要登录）
+app.get('/api/status', authService.middleware, async (req, res) => {
+  const launcherStatus = await launcher.getStatus();
+  const proxyRunning = await proxyService.checkProxy();
+  const status = {
+    ...launcherStatus,
+    proxy: { running: proxyRunning, port: proxyService.getProxyPort() },
+    user: req.user,
+    timestamp: new Date().toISOString()
+  };
+  res.json(status);
+});
+
+// 自动恢复开关
+app.post('/api/proxy/autorecover', (req, res) => {
+  const enabled = req.body.enabled !== false;
+  proxyService.setAutoRecover(enabled);
+  res.json({ success: true, message: '自动恢复已' + (enabled ? '开启' : '关闭'), enabled });
+});
+
+// 游戏数据文件列表
+app.get('/api/game-data', (req, res) => {
+  const dataDir = path.join(GC_DIR, 'data');
+  const files = [
+    'Drop.json', 'ChestDrop.json', 'MonsterDrop.json',
+    'Shop.json', 'ShopChest.v2.json', 'TowerSchedule.json',
+    'BlossomConfig.json', 'Spawns.json', 'GadgetSpawns.json'
+  ];
+  const result = files.map(f => {
+    const p = path.join(dataDir, f);
+    return { name: f, exists: fs.existsSync(p), size: fs.existsSync(p) ? fs.statSync(p).size : 0 };
+  });
+  res.json({ success: true, files: result });
+});
+
+// 读取游戏数据文件
+app.get('/api/game-data/:file', (req, res) => {
+  const fileName = req.params.file;
+  const filePath = path.join(GC_DIR, 'data', fileName);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ success: false, message: '文件不存在' });
+  }
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    res.json({ success: true, content });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 保存游戏数据文件
+app.post('/api/game-data/:file', authService.middleware, (req, res) => {
+  const fileName = req.params.file;
+  const filePath = path.join(GC_DIR, 'data', fileName);
+  try {
+    // 备份
+    if (fs.existsSync(filePath)) {
+      fs.copyFileSync(filePath, filePath + '.backup.' + Date.now());
+    }
+    fs.writeFileSync(filePath, req.body.content, 'utf-8');
+    auditService.logAction(req.user.username, req.user.role, '编辑数据', fileName, '', req.ip);
+    res.json({ success: true, message: '已保存 ' + fileName });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 性能监控
+app.get('/api/perf', (req, res) => {
+  res.json({ success: true, history: perfmon.getHistory() });
+});
+
+app.listen(PORT, () => {
+  console.log(`[提瓦特管理台] 已启动: http://localhost:${PORT}`);
+  console.log(`[提瓦特管理台] 静态文件目录: ${path.join(__dirname, 'public')}`);
+  // 初始化默认管理员
+  authService.initDefaultAdmin();
+  // 启动代理心跳检测（每 5 秒）
+  proxyService.startHeartbeat(5000);
+  // 启动性能监控（每 5 秒）
+  perfmon.start(5000);
+});
+
+// 全局错误防护，防止进程崩溃
+process.on('uncaughtException', (err) => {
+  console.error('[Server] Uncaught exception:', err.message);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[Server] Unhandled rejection:', reason);
+});

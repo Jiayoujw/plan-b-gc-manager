@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>玩家中心 - 提瓦特管理台</title>
+<style>
+:root { --bg: #0f172a; --bg2: #1e293b; --ink: #f8fafc; --muted: #94a3b8; --rule: #334155; --accent: #3b82f6; --accent2: #f59e0b; --success: #10b981; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system,'Segoe UI','Microsoft YaHei',sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; padding: 1rem; }
+.container { max-width: 600px; margin: 0 auto; }
+.header { text-align: center; padding: 2rem 0 1rem; }
+.header h1 { font-size: 1.5rem; }
+.card { background: var(--bg2); border: 1px solid var(--rule); border-radius: 10px; padding: 1.2rem; margin-bottom: 0.8rem; }
+.card h3 { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; margin-bottom: 0.5rem; }
+.stat-row { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+.stat-item { flex: 1; min-width: 80px; text-align: center; }
+.stat-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+.stat-label { font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; }
+.form-group { margin-bottom: 0.8rem; }
+.form-input { width: 100%; padding: 0.6rem; background: var(--bg); border: 1px solid var(--rule); border-radius: 6px; color: var(--ink); font-size: 0.9rem; }
+.btn { padding: 0.6rem 1.2rem; border: none; border-radius: 6px; font-size: 0.9rem; cursor: pointer; width: 100%; }
+.btn.primary { background: var(--accent); color: #fff; }
+.badge { display: inline-block; padding: 0.15em 0.5em; border-radius: 4px; font-size: 0.7rem; }
+.badge-yellow { background: #fef3c7; color: #92400e; }
+.badge-purple { background: #ede9fe; color: #5b21b6; }
+table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+td { padding: 0.4rem 0.3rem; border-bottom: 1px solid var(--rule); }
+.error { color: #ef4444; text-align: center; }
+@media (max-width: 600px) { .stat-row { flex-direction: column; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header"><h1>🎮 玩家中心</h1><p style="color:var(--muted);">查看你的游戏数据</p></div>
+  <div class="card">
+    <div class="form-group">
+      <input type="text" class="form-input" id="puUid" placeholder="输入你的 UID" value="10001">
+    </div>
+    <button class="btn primary" onclick="loadPlayer()">查询</button>
+    <div class="error" id="puError"></div>
+  </div>
+  <div class="card" id="puInfo" style="display:none;">
+    <h3>基本信息</h3>
+    <div class="stat-row">
+      <div class="stat-item"><div class="stat-value" id="puNick">--</div><div class="stat-label">昵称</div></div>
+      <div class="stat-item"><div class="stat-value" id="puAR">--</div><div class="stat-label">冒险等阶</div></div>
+      <div class="stat-item"><div class="stat-value" id="puWL">--</div><div class="stat-label">世界等级</div></div>
+    </div>
+  </div>
+  <div class="card" id="puGacha" style="display:none;">
+    <h3>抽卡统计</h3>
+    <div class="stat-row">
+      <div class="stat-item"><div class="stat-value" id="puGachaTotal">--</div><div class="stat-label">总抽数</div></div>
+      <div class="stat-item"><div class="stat-value" id="puGacha5">--</div><div class="stat-label">5星</div></div>
+      <div class="stat-item"><div class="stat-value" id="puGachaAvg">--</div><div class="stat-label">均5星间隔</div></div>
+      <div class="stat-item"><div class="stat-value" id="puGachaPity">--</div><div class="stat-label">当前保底</div></div>
+    </div>
+  </div>
+</div>
+<script>
+const API = '/api';
+async function loadPlayer() {
+  var uid = document.getElementById('puUid').value.trim();
+  var err = document.getElementById('puError'); err.textContent = '';
+  try {
+    var r = await fetch(API + '/players/' + uid);
+    var d = await r.json();
+    if (!d.success) { err.textContent = d.message; return; }
+    document.getElementById('puInfo').style.display = '';
+    document.getElementById('puNick').textContent = d.data.nickname || '旅行者';
+    var props = d.data.properties || {};
+    document.getElementById('puAR').textContent = (props.PROP_PLAYER_LEVEL?.ival || '1');
+    document.getElementById('puWL').textContent = (props.PROP_PLAYER_WORLD_LEVEL?.ival || '0');
+    // Gacha stats
+    var gr = await fetch(API + '/gacha/history/' + uid + '?limit=500');
+    var gd = await gr.json();
+    if (gd.success) {
+      document.getElementById('puGacha').style.display = '';
+      document.getElementById('puGachaTotal').textContent = gd.total;
+      document.getElementById('puGacha5').textContent = gd.stats.count5;
+      document.getElementById('puGachaAvg').textContent = gd.stats.avgPity5 + '抽';
+      document.getElementById('puGachaPity').textContent = gd.stats.currentPity + '抽';
+    }
+  } catch (e) { err.textContent = '网络错误'; }
+}
+document.getElementById('puUid').addEventListener('keypress', function(e) { if (e.key==='Enter') loadPlayer(); });
+loadPlayer();
+</script>
+</body>
+</html>

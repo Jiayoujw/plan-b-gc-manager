@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.vite/
+*.log
+logs/
+data/auth.json
+data/audit.json
+data/settings.json
+.proxy-ssl/certs/*.pem
+.proxy-ssl/keys/*
+.proxy-ssl/*.srl
+.gacha-backups/
+*.backup.*
+.env.local

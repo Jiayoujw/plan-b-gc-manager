@@ -1,0 +1,10 @@
+node_modules/
+.git/
+.proxy-ssl/
+*.log
+data/auth.json
+data/audit.json
+data/settings.json
+*.backup.*
+.DS_Store
+Thumbs.db
