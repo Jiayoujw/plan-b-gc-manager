@@ -88,16 +88,6 @@ function createWindow() {
       mainWindow.hide();
     }
   });
-
-  // 注入 CSP 允许内联样式
-  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': ["default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;"],
-      },
-    });
-  });
 }
 
 // 系统托盘

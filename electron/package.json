@@ -21,7 +21,7 @@
       "../routes/**/*",
       "../public/**/*",
       "../data/**/*",
-      "../.env",
+      "../.env.example",
       "../package.json",
       "../node_modules/**/*"
     ],
